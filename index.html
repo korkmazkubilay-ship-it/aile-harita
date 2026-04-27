@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aile Seyahat Haritası</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      color: #111827;
+    }
+
+    header {
+      height: 64px;
+      background: #111827;
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    header span {
+      font-size: 13px;
+      color: #d1d5db;
+    }
+
+    .layout {
+      display: flex;
+      height: calc(100vh - 64px);
+      width: 100vw;
+    }
+
+    #map {
+      flex: 1;
+      height: 100%;
+      z-index: 1;
+    }
+
+    aside {
+      width: 360px;
+      height: 100%;
+      background: white;
+      padding: 16px;
+      overflow-y: auto;
+      box-shadow: -4px 0 18px rgba(0,0,0,0.08);
+      z-index: 10;
+    }
+
+    h3 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 20px;
+    }
+
+    h4 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      color: #4b5563;
+      margin-bottom: 5px;
+    }
+
+    .info {
+      font-size: 13px;
+      color: #4b5563;
+      line-height: 1.45;
+      background: #f3f4f6;
+      padding: 10px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+
+    select, input, textarea, button {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    select, input, textarea {
+      border: 1px solid #d1d5db;
+      background: white;
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+      font-family: Arial, sans-serif;
+      line-height: 1.4;
+    }
+
+    button {
+      background: #111827;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover { background: #374151; }
+
+    .danger { background: #dc2626; }
+    .danger:hover { background: #b91c1c; }
+
+    .secondary { background: #6b7280; }
+    .secondary:hover { background: #4b5563; }
+
+    .date-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .section {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 9px;
+      font-size: 14px;
+    }
+
+    .dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .count-box {
+      background: #f3f4f6;
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+      min-height: 72px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .count-number {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .count-label {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .mini-list {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px;
+      margin-top: 8px;
+    }
+
+    .mini-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+      padding: 4px 0;
+      border-bottom: 1px dashed #e5e7eb;
+    }
+
+    .mini-row:last-child {
+      border-bottom: none;
+    }
+
+    .mini-muted {
+      color: #6b7280;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .custom-pin {
+      width: 26px;
+      height: 26px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      border: 2px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.45);
+      position: relative;
+    }
+
+    .custom-pin::after {
+      content: "";
+      width: 8px;
+      height: 8px;
+      background: white;
+      position: absolute;
+      border-radius: 50%;
+      left: 7px;
+      top: 7px;
+    }
+
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px;
+    }
+
+    .leaflet-popup-content {
+      min-width: 230px;
+      max-width: 280px;
+    }
+
+    .popup-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+      color: #111827;
+      font-size: 15px;
+    }
+
+    .popup-meta {
+      color: #6b7280;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .popup-photo {
+      width: 100%;
+      max-height: 180px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .popup-note {
+      white-space: pre-wrap;
+      color: #374151;
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+
+    .popup-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .popup-actions button {
+      margin-bottom: 0;
+      padding: 8px;
+      font-size: 13px;
+    }
+
+    .photo-preview {
+      display: none;
+      width: 100%;
+      max-height: 150px;
+      object-fit: cover;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      margin-bottom: 10px;
+    }
+
+    .small-note {
+      color: #6b7280;
+      font-size: 12px;
+      line-height: 1.35;
+      margin-top: -4px;
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 900px) {
+      header {
+        height: auto;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+      }
+
+      .layout {
+        flex-direction: column;
+        height: auto;
+      }
+
+      #map {
+        height: 70vh;
+        flex: none;
+      }
+
+      aside {
+        width: 100%;
+        height: auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h2>Aile Seyahat Haritası</h2>
+  <span>İnteraktif aile gezi haritası</span>
+</header>
+
+<div class="layout">
+  <div id="map"></div>
+
+  <aside>
+    <h3 id="formTitle">Pin Ekle</h3>
+
+    <div class="info">
+      1. Haritada istediğin noktaya tıkla.<br>
+      2. Aile bireyi, başlık, tarih aralığı, not ve istersen fotoğraf ekle.<br>
+      3. “Pin Ekle” butonuna bas.<br><br>
+      Pine tıklayınca not ve fotoğraf açılır. Açılan pencereden pini düzenleyebilir veya silebilirsin.
+    </div>
+
+    <input type="hidden" id="editingId" value="">
+    <input type="hidden" id="currentPhoto" value="">
+
+    <label>Aile bireyi</label>
+    <select id="member">
+      <option value="#2563eb" data-name="Kubilay">Kubilay</option>
+      <option value="#db2777" data-name="Ebru">Ebru</option>
+      <option value="#f59e0b" data-name="Bulut">Bulut</option>
+      <option value="#16a34a" data-name="Ailece" selected>Ailece</option>
+    </select>
+
+    <label>Başlık / şehir adı <span style="color:#6b7280;">(isteğe bağlı)</span></label>
+    <input id="title" placeholder="Örn: Hamburg gezisi">
+
+    <div class="date-row">
+      <div>
+        <label>Başlangıç</label>
+        <input id="startDate" type="date">
+      </div>
+      <div>
+        <label>Bitiş</label>
+        <input id="endDate" type="date">
+      </div>
+    </div>
+
+    <label>Not</label>
+    <textarea id="note" placeholder="Bu pin için not yaz..."></textarea>
+
+    <label>Fotoğraf <span style="color:#6b7280;">(isteğe bağlı)</span></label>
+    <input id="photo" type="file" accept="image/*" onchange="previewPhoto()">
+    <img id="photoPreview" class="photo-preview" alt="Fotoğraf önizleme">
+    <div class="small-note">Fotoğraf seçersen otomatik küçültülerek kaydedilir. Düzenleme sırasında yeni fotoğraf seçmezsen eski fotoğraf korunur.</div>
+    <button id="removePhotoButton" class="secondary" onclick="removeCurrentPhoto()" style="display:none;">Fotoğrafı Kaldır</button>
+
+    <button id="saveButton" onclick="savePin()">Pin Ekle</button>
+    <button id="cancelEditButton" class="secondary" onclick="cancelEdit()" style="display:none;">Düzenlemeyi İptal Et</button>
+    <button class="danger" onclick="clearPins()">Tüm Pinleri Sil</button>
+
+    <div class="section">
+      <h3>Filtrele</h3>
+      <label>Aile bireyine göre göster</label>
+      <select id="filterMember" onchange="render()">
+        <option value="all">Tüm pinler</option>
+        <option value="Kubilay">Kubilay</option>
+        <option value="Ebru">Ebru</option>
+        <option value="Bulut">Bulut</option>
+        <option value="Ailece">Ailece</option>
+      </select>
+
+      <label>Yıla göre göster</label>
+      <select id="filterYear" onchange="render()">
+        <option value="all">Tüm yıllar</option>
+      </select>
+
+      <button class="secondary" onclick="resetFilters()">Filtreleri Temizle</button>
+    </div>
+
+    <div class="section">
+      <h3>Özet</h3>
+      <div class="stats-grid">
+        <div class="count-box">
+          <div class="count-number" id="pinCount">0</div>
+          <div class="count-label">Görünen Pin</div>
+        </div>
+        <div class="count-box">
+          <div class="count-number" id="totalPinCount">0</div>
+          <div class="count-label">Toplam Pin</div>
+        </div>
+        <div class="count-box">
+          <div class="count-number" id="uniqueTitleCount">0</div>
+          <div class="count-label">Başlıklı Yer</div>
+        </div>
+        <div class="count-box">
+          <div class="count-number" id="topTraveler">-</div>
+          <div class="count-label">En Çok Pin</div>
+        </div>
+      </div>
+
+      <div class="mini-list">
+        <h4>Kişiye göre dağılım</h4>
+        <div id="memberStats"></div>
+      </div>
+
+      <div class="mini-list">
+        <h4>Yıla göre dağılım</h4>
+        <div id="yearStats"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Renkler</h3>
+      <div class="legend-item"><span class="dot" style="background:#2563eb"></span> Kubilay</div>
+      <div class="legend-item"><span class="dot" style="background:#db2777"></span> Ebru</div>
+      <div class="legend-item"><span class="dot" style="background:#f59e0b"></span> Bulut</div>
+      <div class="legend-item"><span class="dot" style="background:#16a34a"></span> Ailece</div>
+    </div>
+  </aside>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+  const STORAGE_KEY = 'familyTravelInteractivePinsV5';
+  const OLD_STORAGE_KEYS = [
+    'familyTravelInteractivePinsV4',
+    'familyTravelInteractivePinsV3',
+    'familyTravelInteractivePinsV2',
+    'familyTravelInteractivePins',
+    'familyTravelPins'
+  ];
+
+  let pins = loadPins();
+  let selectedLatLng = null;
+  let markers = [];
+  let pendingPhotoData = null;
+  let removePhotoFlag = false;
+
+  const map = L.map('map', {
+    center: [48.5, 16.5],
+    zoom: 4,
+    minZoom: 2,
+    maxZoom: 18
+  });
+
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles &copy; Esri & contributors',
+    maxZoom: 18
+  }).addTo(map);
+
+  document.getElementById('startDate').valueAsDate = new Date();
+  document.getElementById('endDate').valueAsDate = new Date();
+
+  map.on('click', function(e) {
+    map.closePopup();
+    selectedLatLng = e.latlng;
+  });
+
+  function loadPins() {
+    const current = localStorage.getItem(STORAGE_KEY);
+    if (current) return JSON.parse(current);
+
+    for (const key of OLD_STORAGE_KEYS) {
+      const oldData = localStorage.getItem(key);
+      if (oldData) {
+        const parsed = JSON.parse(oldData);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        return parsed;
+      }
+    }
+
+    return [];
+  }
+
+  function saveStorage() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(pins));
+  }
+
+  function createPinIcon(color) {
+    return L.divIcon({
+      className: '',
+      html: `<div class="custom-pin" style="background:${color}"></div>`,
+      iconSize: [26, 26],
+      iconAnchor: [13, 26],
+      popupAnchor: [0, -26]
+    });
+  }
+
+  function getFormData() {
+    const memberSelect = document.getElementById('member');
+    const selectedOption = memberSelect.options[memberSelect.selectedIndex];
+
+    return {
+      color: memberSelect.value,
+      memberName: selectedOption.getAttribute('data-name'),
+      title: document.getElementById('title').value.trim(),
+      startDate: document.getElementById('startDate').value,
+      endDate: document.getElementById('endDate').value,
+      note: document.getElementById('note').value.trim()
+    };
+  }
+
+  function previewPhoto() {
+    const file = document.getElementById('photo').files[0];
+    if (!file) return;
+
+    resizeImage(file, 900, 0.75, function(resizedData) {
+      pendingPhotoData = resizedData;
+      removePhotoFlag = false;
+      document.getElementById('currentPhoto').value = resizedData;
+      showPhotoPreview(resizedData);
+    });
+  }
+
+  function resizeImage(file, maxWidth, quality, callback) {
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+      const img = new Image();
+
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const scale = Math.min(1, maxWidth / img.width);
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        const resizedData = canvas.toDataURL('image/jpeg', quality);
+        callback(resizedData);
+      };
+
+      img.src = event.target.result;
+    };
+
+    reader.readAsDataURL(file);
+  }
+
+  function showPhotoPreview(photoData) {
+    const preview = document.getElementById('photoPreview');
+    preview.src = photoData;
+    preview.style.display = 'block';
+    document.getElementById('removePhotoButton').style.display = 'block';
+  }
+
+  function hidePhotoPreview() {
+    const preview = document.getElementById('photoPreview');
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
+    document.getElementById('removePhotoButton').style.display = 'none';
+  }
+
+  function removeCurrentPhoto() {
+    pendingPhotoData = null;
+    removePhotoFlag = true;
+    document.getElementById('currentPhoto').value = '';
+    document.getElementById('photo').value = '';
+    hidePhotoPreview();
+  }
+
+  function savePin() {
+    const editingId = document.getElementById('editingId').value;
+    const data = getFormData();
+
+    if (data.startDate && data.endDate && data.endDate < data.startDate) {
+      alert('Bitiş tarihi başlangıç tarihinden önce olamaz.');
+      return;
+    }
+
+    if (editingId) {
+      const index = pins.findIndex(pin => String(pin.id) === String(editingId));
+      if (index === -1) return;
+
+      let photo = pins[index].photo || '';
+      if (removePhotoFlag) photo = '';
+      if (pendingPhotoData) photo = pendingPhotoData;
+
+      pins[index] = {
+        ...pins[index],
+        color: data.color,
+        memberName: data.memberName,
+        title: data.title,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        note: data.note || 'Not eklenmedi.',
+        photo: photo
+      };
+
+      saveStorage();
+      cancelEdit();
+      updateYearFilterOptions();
+      render();
+      return;
+    }
+
+    if (!selectedLatLng) {
+      alert('Önce haritada pin koymak istediğin yere tıkla.');
+      return;
+    }
+
+    pins.push({
+      id: Date.now(),
+      lat: selectedLatLng.lat,
+      lng: selectedLatLng.lng,
+      color: data.color,
+      memberName: data.memberName,
+      title: data.title,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      note: data.note || 'Not eklenmedi.',
+      photo: pendingPhotoData || ''
+    });
+
+    saveStorage();
+    selectedLatLng = null;
+    resetForm();
+    map.closePopup();
+    updateYearFilterOptions();
+    render();
+  }
+
+  function editPin(id) {
+    const pin = pins.find(item => String(item.id) === String(id));
+    if (!pin) return;
+
+    document.getElementById('editingId').value = pin.id;
+    document.getElementById('formTitle').textContent = 'Pin Düzenle';
+    document.getElementById('saveButton').textContent = 'Değişiklikleri Kaydet';
+    document.getElementById('cancelEditButton').style.display = 'block';
+
+    const memberSelect = document.getElementById('member');
+    memberSelect.value = pin.color;
+    document.getElementById('title').value = pin.title || '';
+    document.getElementById('startDate').value = pin.startDate || pin.date || '';
+    document.getElementById('endDate').value = pin.endDate || pin.date || '';
+    document.getElementById('note').value = pin.note === 'Not eklenmedi.' ? '' : (pin.note || '');
+    document.getElementById('photo').value = '';
+    pendingPhotoData = null;
+    removePhotoFlag = false;
+
+    if (pin.photo) {
+      document.getElementById('currentPhoto').value = pin.photo;
+      showPhotoPreview(pin.photo);
+    } else {
+      document.getElementById('currentPhoto').value = '';
+      hidePhotoPreview();
+    }
+
+    map.closePopup();
+  }
+
+  function cancelEdit() {
+    document.getElementById('editingId').value = '';
+    document.getElementById('formTitle').textContent = 'Pin Ekle';
+    document.getElementById('saveButton').textContent = 'Pin Ekle';
+    document.getElementById('cancelEditButton').style.display = 'none';
+    resetForm();
+  }
+
+  function resetForm() {
+    document.getElementById('title').value = '';
+    document.getElementById('note').value = '';
+    document.getElementById('photo').value = '';
+    document.getElementById('currentPhoto').value = '';
+    document.getElementById('startDate').valueAsDate = new Date();
+    document.getElementById('endDate').valueAsDate = new Date();
+    pendingPhotoData = null;
+    removePhotoFlag = false;
+    hidePhotoPreview();
+  }
+
+  function deletePin(id) {
+    if (!confirm('Bu pini silmek istiyor musun?')) return;
+    pins = pins.filter(pin => String(pin.id) !== String(id));
+    saveStorage();
+    map.closePopup();
+    cancelEdit();
+    updateYearFilterOptions();
+    render();
+  }
+
+  function clearPins() {
+    if (!confirm('Tüm pinleri silmek istiyor musun?')) return;
+    pins = [];
+    saveStorage();
+    selectedLatLng = null;
+    map.closePopup();
+    cancelEdit();
+    updateYearFilterOptions();
+    render();
+  }
+
+  function resetFilters() {
+    document.getElementById('filterMember').value = 'all';
+    document.getElementById('filterYear').value = 'all';
+    render();
+  }
+
+  function getPinYear(pin) {
+    const dateValue = pin.startDate || pin.date || pin.endDate || '';
+    return dateValue ? dateValue.slice(0, 4) : 'Tarihsiz';
+  }
+
+  function getFilteredPins() {
+    const selectedMember = document.getElementById('filterMember').value;
+    const selectedYear = document.getElementById('filterYear').value;
+
+    return pins.filter(pin => {
+      const memberMatches = selectedMember === 'all' || pin.memberName === selectedMember;
+      const yearMatches = selectedYear === 'all' || getPinYear(pin) === selectedYear;
+      return memberMatches && yearMatches;
+    });
+  }
+
+  function updateYearFilterOptions() {
+    const select = document.getElementById('filterYear');
+    const currentValue = select.value;
+    const years = Array.from(new Set(pins.map(getPinYear))).sort((a, b) => {
+      if (a === 'Tarihsiz') return 1;
+      if (b === 'Tarihsiz') return -1;
+      return Number(b) - Number(a);
+    });
+
+    select.innerHTML = '<option value="all">Tüm yıllar</option>';
+    years.forEach(year => {
+      const option = document.createElement('option');
+      option.value = year;
+      option.textContent = year;
+      select.appendChild(option);
+    });
+
+    if ([...select.options].some(option => option.value === currentValue)) {
+      select.value = currentValue;
+    }
+  }
+
+  function updateStats(visiblePins) {
+    document.getElementById('pinCount').textContent = visiblePins.length;
+    document.getElementById('totalPinCount').textContent = pins.length;
+
+    const titledPlaces = new Set(
+      pins
+        .map(pin => (pin.title || '').trim().toLowerCase())
+        .filter(Boolean)
+    );
+    document.getElementById('uniqueTitleCount').textContent = titledPlaces.size;
+
+    const memberCounts = countBy(pins, pin => pin.memberName || 'Bilinmeyen');
+    const top = Object.entries(memberCounts).sort((a, b) => b[1] - a[1])[0];
+    document.getElementById('topTraveler').textContent = top ? top[0] : '-';
+
+    document.getElementById('memberStats').innerHTML = renderCountRows(memberCounts, 'Henüz pin yok.');
+
+    const yearCounts = countBy(pins, getPinYear);
+    const sortedYearCounts = Object.fromEntries(
+      Object.entries(yearCounts).sort((a, b) => {
+        if (a[0] === 'Tarihsiz') return 1;
+        if (b[0] === 'Tarihsiz') return -1;
+        return Number(b[0]) - Number(a[0]);
+      })
+    );
+    document.getElementById('yearStats').innerHTML = renderCountRows(sortedYearCounts, 'Henüz tarihli pin yok.');
+  }
+
+  function countBy(items, getter) {
+    return items.reduce((acc, item) => {
+      const key = getter(item);
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+  }
+
+  function renderCountRows(counts, emptyText) {
+    const entries = Object.entries(counts);
+    if (entries.length === 0) {
+      return `<div class="mini-muted">${emptyText}</div>`;
+    }
+
+    return entries.map(([name, count]) => `
+      <div class="mini-row">
+        <span>${escapeHtml(name)}</span>
+        <strong>${count}</strong>
+      </div>
+    `).join('');
+  }
+
+  function escapeHtml(text) {
+    return String(text || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function formatDate(dateValue) {
+    if (!dateValue) return 'Tarih yok';
+    const parts = dateValue.split('-');
+    if (parts.length !== 3) return dateValue;
+    return `${parts[2]}.${parts[1]}.${parts[0]}`;
+  }
+
+  function formatDateRange(startDate, endDate) {
+    if (!startDate && !endDate) return 'Tarih yok';
+
+    const start = startDate ? formatDate(startDate) : '';
+    const end = endDate ? formatDate(endDate) : '';
+
+    if (startDate && endDate && startDate !== endDate) {
+      return `${start} - ${end}`;
+    }
+
+    return start || end;
+  }
+
+  function render() {
+    markers.forEach(marker => map.removeLayer(marker));
+    markers = [];
+
+    const visiblePins = getFilteredPins();
+
+    visiblePins.forEach(pin => {
+      const marker = L.marker([pin.lat, pin.lng], {
+        icon: createPinIcon(pin.color)
+      }).addTo(map);
+
+      const title = pin.title ? escapeHtml(pin.title) : 'Başlıksız pin';
+      const member = escapeHtml(pin.memberName || 'Aile bireyi');
+      const date = escapeHtml(formatDateRange(pin.startDate || pin.date, pin.endDate || pin.date));
+      const note = escapeHtml(pin.note || 'Not eklenmedi.');
+      const photoHtml = pin.photo ? `<img class="popup-photo" src="${pin.photo}" alt="Pin fotoğrafı">` : '';
+
+      marker.bindPopup(`
+        <div class="popup-title">${title}</div>
+        <div class="popup-meta">${member} • ${date}</div>
+        ${photoHtml}
+        <div class="popup-note">${note}</div>
+        <div class="popup-actions">
+          <button onclick="editPin(${pin.id})">Düzenle</button>
+          <button class="danger" onclick="deletePin(${pin.id})">Sil</button>
+        </div>
+      `, {
+        closeButton: true,
+        autoClose: true,
+        closeOnClick: true
+      });
+
+      markers.push(marker);
+    });
+
+    updateStats(visiblePins);
+  }
+
+  updateYearFilterOptions();
+  render();
+</script>
+
+</body>
+</html>
